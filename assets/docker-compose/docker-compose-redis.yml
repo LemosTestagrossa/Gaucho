@@ -1,0 +1,26 @@
+version: "3.2"
+services:
+
+ redis:
+    image: "redis:alpine"
+
+    command: redis-server --requirepass sOmE_sEcUrE_pAsS
+
+    ports:
+     - "6379:6379"
+
+    volumes:
+     - $PWD/redis-data:/var/lib/redis
+      - $PWD/redis.conf:/usr/local/etc/redis/redis.conf
+
+    environment:
+     - REDIS_REPLICATION_MODE=master
+
+    networks:
+      example_network:
+        ipv4_address: 172.28.1.4
+
+networks:
+  example_network:
+    external:
+      name: example_network

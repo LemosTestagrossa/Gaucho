@@ -1,2 +1,37 @@
+.bsp
+rocksdb-journal
+snapshots
+
 *.class
 *.log
+
+# sbt specific
+.cache
+.history
+.lib/
+dist/*
+target/
+lib_managed/
+src_managed/
+project/boot/
+project/plugins/project/
+
+# Scala-IDE specific
+.scala_dependencies
+.worksheet
+# IDEA
+.idea/
+# Metals
+\.metals/
+\.bloop/
+
+target
+
+.DS_Store
+
+*.pyc
+
+# archivos generados por procedimientos
+assets/docker-compose/cassandra/config/cassandra.yaml
+# archivos referenciados por la documentación
+assets/examples/DGR-COP-OBLIGACIONES-TRI.json

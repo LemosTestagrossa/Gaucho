@@ -1,0 +1,1 @@
+docker exec -i cassandra bash -c 'cqlsh -u cassandra -p cassandra' < assets/scripts/cassandra/tables.cql
