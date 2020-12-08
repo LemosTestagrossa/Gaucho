@@ -10,11 +10,4 @@ services:
       - 9042:9042
     volumes:
       - ./cassandra/config/cassandra.yaml:/etc/cassandra/cassandra.yaml
-    networks:
-      example_network:
-        ipv4_address: 172.22.0.6
-
-networks:
-  example_network:
-    external:
-      name: example_network
+    network_mode: host

@@ -26,12 +26,5 @@ project/plugins/project/
 \.bloop/
 
 target
-
 .DS_Store
 
-*.pyc
-
-# archivos generados por procedimientos
-assets/docker-compose/cassandra/config/cassandra.yaml
-# archivos referenciados por la documentación
-assets/examples/DGR-COP-OBLIGACIONES-TRI.json
