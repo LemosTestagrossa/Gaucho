@@ -29,16 +29,9 @@ object Persistence {
       ec: ExecutionContext,
       system: ActorSystem
   ): Long =
-    Try {
-      val a = Await.result(load(GroupTopicPartition(group, topic, partition)), 5 second).toLong
-      a
-    } match {
-      case Failure(e: RocksDBException) =>
-        -1L
-      case Failure(e) =>
-        -1L
-      case Success(offset) =>
-        offset
+    load(GroupTopicPartition(group, topic, partition)) match {
+      case Some(value) => value.toLong
+      case None => -1L
     }
 
   def saveOffset(topic: String, partition: Int)(offset: Long)(
@@ -65,13 +58,14 @@ object Persistence {
       implicit
       ec: ExecutionContext,
       system: ActorSystem
-  ): Future[Option[Snapshot]] =
+  ): Option[Snapshot] =
     recoverSnapshot(message.aggregateRoot)
+
   def recoverSnapshot(aggregateRoot: String)(
       implicit ec: ExecutionContext,
       system: ActorSystem
-  ): Future[Option[Snapshot]] = {
-    load(aggregateRoot).map { loaded =>
+  ): Option[Snapshot] = {
+    load(aggregateRoot).flatMap { loaded =>
       val snapshot = for {
         event <- EventFromJson(loaded)
       } yield Snapshot(event)

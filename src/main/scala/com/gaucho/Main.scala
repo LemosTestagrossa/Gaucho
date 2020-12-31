@@ -3,10 +3,12 @@ package com.gaucho
 import akka.Done
 import com.gaucho.ExampleActor.{ExampleActorProtocol, Hello}
 import akka.actor.ActorSystem
+import akka.kafka.ProducerSettings
 import akka.util.Timeout
 import com.gaucho.Main.timeout
 import com.gaucho.domain.MessageWithOffset
-import com.gaucho.infrastructure.kafka.{MessageConsumer, MessageProducer}
+import com.gaucho.infrastructure.kafka.KafkaMessageProducer.{bootstrapServers, KeyValue}
+import com.gaucho.infrastructure.kafka.{KafkaMessageProducer, MessageConsumer}
 import com.gaucho.infrastructure.monitoring.algebra.Monitoring
 import com.gaucho.infrastructure.monitoring.interpreter.{AkkaBasedMonitoring, MetricsApi, MonitoringApiActor}
 import com.gaucho.infrastructure.sharding.ActorRefOf.RequirementsOf
@@ -14,6 +16,7 @@ import com.gaucho.infrastructure.sharding.GuardianSystem
 import com.gaucho.infrastructure.sharding.GuardianSystem.GuardianSystemRef
 import com.gaucho.infrastructure.snapshotting.EventOptimalBatcher
 import com.typesafe.config.ConfigFactory
+import org.apache.kafka.common.serialization.StringSerializer
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration.{Duration, DurationInt}
@@ -56,7 +59,11 @@ object Main extends App {
 
   val topic = "pepe"
 
-  val messageProducer = new MessageProducer(config)
+  val messageProducer = new KafkaMessageProducer()(
+    system,
+    ProducerSettings(system, new StringSerializer, new StringSerializer)
+      .withBootstrapServers(bootstrapServers)
+  )
   val messageConsumer = new MessageConsumer(config)
 
   val million = 1000 * 1000
@@ -64,8 +71,7 @@ object Main extends App {
   def producer(topic: String, i: Int): Future[Done] = {
     messageProducer
       .produce(
-        topic,
-        (1 to million)
+        () =>  (1 to million)
           .map(index => Hello.apply(group = "defaultGroup", topic, partition = 0, index))
           .map(
             _.copy(aggregateRoot = i match {
@@ -76,7 +82,8 @@ object Main extends App {
               case 5 => "actorE"
             })
           )
-          .map(Hello.helloToJson)
+          .map(hello => KeyValue(hello.aggregateRoot, Hello.helloToJson(hello))),
+        topic
       )
       .map { done =>
         messagesPublishedToKafka.add(million)

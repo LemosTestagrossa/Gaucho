@@ -58,10 +58,10 @@ class RocksdbBatchInserter(
           .gauge(
             s"kafka_offset" +
             s"_group_${g.group}" +
-            s"_topic_${g.topic}" +
-            s"_partition_${g.partition}"
+            s"_topic_${g.topic}"
           )
           .set(o.last)
+      case _ => ()
     }
 
   system.scheduler.scheduleAtFixedRate(15 seconds, 15 seconds)({ () =>

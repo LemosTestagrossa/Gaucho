@@ -9,7 +9,13 @@ import com.gaucho.infrastructure.snapshotting.cassandra.CassandraEventBatchInser
 import com.gaucho.domain.GroupTopicPartition
 import com.gaucho.infrastructure.snapshotting.rocksdb.RocksdbBatchInserter
 import com.gaucho.domain._
+import com.gaucho.infrastructure.kafka.KafkaMessageProducer.KeyValue
+import com.gaucho.infrastructure.kafka.MessageProducerLike
+import com.gaucho.infrastructure.snapshotting.kafka.KafkaBatchInserter
+import com.gaucho.infrastructure.snapshotting.kafka.KafkaBatchInserter.KafkaInserterOptimalBatcher
+import org.apache.kafka.common.protocol.types.Field.UUID
 
+import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.ExecutionContext
 
 case class EventOptimalBatcher(ref: OptimalBatcherRef[Event]) {
@@ -55,5 +61,32 @@ object EventOptimalBatcher {
       ec: ExecutionContext,
       monitoring: Monitoring
   ) = start("CassandraEventBatchInserter", new CassandraEventBatchInserter)
+
+  val atomic = new AtomicInteger()
+  def kafkaProducerBatcher(
+                            recommendedBatchSize: Int = math.min(1, Runtime.getRuntime.availableProcessors - 1),
+                            recommendedBatchTime: Option[Int] = None
+                          )(
+      implicit
+      system: ActorSystem,
+      ec: ExecutionContext,
+      monitoring: Monitoring,
+      messageProducer: MessageProducerLike ): KafkaInserterOptimalBatcher = {
+    val (name, batchInserter) = ("KafkaBatchInserter_" + atomic.incrementAndGet(), new KafkaBatchInserter)
+    KafkaInserterOptimalBatcher(
+      OptimalBatcher.start(
+        name + atomic.incrementAndGet(), { batch: Seq[(String, KeyValue)] =>
+          for {
+            doneSavingBatch <- batchInserter insertBatch batch
+          } yield {
+            println(s"Published ${batch.size} messages to Kafka")
+            doneSavingBatch
+          }
+        },
+        recommendedBatchSize,
+        recommendedBatchTime
+      )
+    )
+  }
 
 }

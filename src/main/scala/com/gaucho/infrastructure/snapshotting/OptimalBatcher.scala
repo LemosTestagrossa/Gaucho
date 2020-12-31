@@ -15,18 +15,26 @@ import scala.util.Random
 object OptimalBatcher {
   case class OptimalBatcherRef[BatchElement](ref: ActorRef)
 
-  def start[BatchElement](name: String, insertBatchElements: Seq[BatchElement] => Future[Done])(
+  def start[BatchElement](
+      name: String,
+      insertBatchElements: Seq[BatchElement] => Future[Done],
+      recommendedBatchSize: Int = math.min(1, Runtime.getRuntime.availableProcessors - 1),
+      recommendedBatchTime: Option[Int] = None
+  )(
       implicit
       system: ActorSystem,
       m: Monitoring,
       c: ClassTag[BatchElement]
   ): OptimalBatcherRef[BatchElement] = {
     val actorName = s"OptimalBatcher_$name"
-    OptimalBatcherRef(system.actorOf(Props(new OptimalBatcher[BatchElement](insertBatchElements)), actorName))
+    OptimalBatcherRef(
+      system.actorOf(Props(new OptimalBatcher[BatchElement](insertBatchElements, recommendedBatchSize, recommendedBatchTime)), actorName)
+    )
   }
 }
 
-private class OptimalBatcher[BatchElement: ClassTag](insertBatchElements: Seq[BatchElement] => Future[Done])(
+private class OptimalBatcher[BatchElement: ClassTag](insertBatchElements: Seq[BatchElement] => Future[Done],
+                                                     recommendedBatchSize: Int, recommendedBatchTime: Option[Int])(
     implicit m: Monitoring
 ) extends Actor {
 
@@ -43,7 +51,7 @@ private class OptimalBatcher[BatchElement: ClassTag](insertBatchElements: Seq[Ba
   val bufferSizeGauge = m.gauge(name + "buffer_size")
   var eventualConsistency = 0
   var bufferElements = 0
-  var bufferBucketSize = Runtime.getRuntime.availableProcessors
+  var bufferBucketSize = recommendedBatchSize
   var bufferTimeSize = 4000.0 // millis
   var timeThatItTookToWrite = 1000L // millis
   val oneSecond = 1000L
@@ -59,14 +67,24 @@ private class OptimalBatcher[BatchElement: ClassTag](insertBatchElements: Seq[Ba
       val r = timeThatItTookToWrite.toDouble / timeThatItTookToFillTheBuffer.toDouble
       if (r.isNaN) 1 else r
     }
-    bufferTimeSize = cap(0.1, 6 * oneSecond)(bufferTimeSize * capByHalf(relation))
+    bufferTimeSize = cap(1000, 6 * oneSecond)(bufferTimeSize * capByHalf(relation))
     bufferSizeGauge.set(bufferBucketSize)
     bufferTimeGauge.set(bufferTimeSize)
   }
 
   case object RecalculateEventualConsistency
   case object FlushBatchElements
-  context.system.scheduler.scheduleAtFixedRate(2 seconds, 2 seconds, self, RecalculateEventualConsistency)
+
+  var isKafka = false
+  if (recommendedBatchTime.isDefined){
+    val time = recommendedBatchTime.get
+    isKafka = true
+    println("IS KAFKA>")
+    context.system.scheduler.scheduleAtFixedRate(time seconds, time seconds , self, FlushBatchElements)
+  }
+  else {
+    context.system.scheduler.scheduleAtFixedRate(2 seconds, 2 seconds, self, RecalculateEventualConsistency)
+  }
 
   def flushBatchElements(): Unit = {
     if (batchElements.nonEmpty) {
@@ -77,6 +95,7 @@ private class OptimalBatcher[BatchElement: ClassTag](insertBatchElements: Seq[Ba
       timeThatItTookToFillTheBuffer = now - timestampFromLastBufferFlush
       timestampFromLastBufferFlush = now
 
+      if (isKafka) println(s"KAFKA FLUSHING EVENTS EVERY $timeThatItTookToFillTheBuffer")
       insertBatchElements(e).map { _ =>
         timeThatItTookToWrite = now - timestampFromBegginingOfWrite
       }
@@ -88,7 +107,7 @@ private class OptimalBatcher[BatchElement: ClassTag](insertBatchElements: Seq[Ba
     case event: BatchElement =>
       batchElements.append(event)
       bufferElements += 1
-      if (bufferElements > bufferBucketSize.toInt) {
+      if (bufferElements > bufferBucketSize) {
         self ! FlushBatchElements
       }
     case FlushBatchElements =>

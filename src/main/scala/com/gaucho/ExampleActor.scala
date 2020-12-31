@@ -52,7 +52,7 @@ object ExampleActor {
 
 private class ExampleActor(initial: String)(rocksDbBatcher: EventOptimalBatcher, cassandra: EventOptimalBatcher)(
     implicit monitoring: Monitoring
-) extends NonAuditablePersistentActor(rocksDbBatcher, cassandra)
+) extends NonAuditablePersistentActor()(rocksDbBatcher, monitoring)
     with ActorLogging {
   import ExampleActor._
 

@@ -14,18 +14,19 @@ object RocksDBUtils { // TODO make a class and a trait StateMap extends MapLike
     new Options().setCreateIfMissing(true)
   }, ConfigFactory.load().getString("rocksdb-journal.dir"))
 
+  val notFound = new Exception("Not found")
   def load(key: String)(
       implicit
       ec: ExecutionContext,
       system: ActorSystem
-  ): Future[String] =
-    retryFuture(Future {
-      val loaded = rocksDB.get(key.getBytes)
-      println(s"loaded was ${loaded}")
-      val loadedd = loaded.map(_.toChar).mkString
-      println(s"loadedd was ${loadedd}")
-      loadedd
-    })
+  ): Option[String] = {
+    val loaded = rocksDB.get(key.getBytes)
+    if (loaded == null) {
+      None
+    } else {
+      Some(loaded.map(_.toChar).mkString)
+    }
+  }
 
   def put[A](key: String, value: A)(
       implicit

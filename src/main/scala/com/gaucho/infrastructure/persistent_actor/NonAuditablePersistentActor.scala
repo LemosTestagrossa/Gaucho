@@ -5,8 +5,9 @@ import com.gaucho.infrastructure.monitoring.algebra.Monitoring
 import com.gaucho.infrastructure.snapshotting.EventOptimalBatcher
 import com.gaucho.domain.Event._
 
-abstract class NonAuditablePersistentActor(rocksDb: EventOptimalBatcher, cassandra: EventOptimalBatcher)(
+abstract class NonAuditablePersistentActor(
     implicit
+    rocksDb: EventOptimalBatcher,
     monitoring: Monitoring
 ) extends PersistentActor {
   final protected def persist(

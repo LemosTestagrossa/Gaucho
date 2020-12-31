@@ -46,7 +46,12 @@ class MessageConsumer(config: Config)(
       .map { msg =>
         MessageWithOffset(msg.value, msg.offset)
       }
-      .map { callback }
+      .map(callback)
+      //.mapAsyncUnordered(Runtime.getRuntime.availableProcessors() - 1) { a =>
+        //Future {
+          //callback(a)
+        //}
+      //}
       .runWith(Sink.ignore)
   }
 

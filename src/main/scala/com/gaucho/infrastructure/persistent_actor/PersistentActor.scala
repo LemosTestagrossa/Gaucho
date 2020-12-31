@@ -6,6 +6,8 @@ import scala.concurrent.ExecutionContext
 import Persistence._
 import com.gaucho.infrastructure.monitoring.algebra.{Counter, Monitoring}
 import com.gaucho.domain.Event._
+import scala.concurrent.duration._
+import akka.actor.PoisonPill 
 
 protected[persistent_actor] abstract class PersistentActor(implicit monitoring: Monitoring) extends Actor {
   protected def receiveCommand: Receive
@@ -14,6 +16,8 @@ protected[persistent_actor] abstract class PersistentActor(implicit monitoring: 
 
   implicit protected final val ec: ExecutionContext = context.system.dispatcher
   val eventsReadToRocksDb: Counter = monitoring.counter("events_read_from_rocksdb")
+  
+  context.system.scheduler.scheduleOnce(2 seconds, self, PoisonPill)
 
   protected def persist(
       auditory: AuditableEvent,
@@ -29,12 +33,10 @@ protected[persistent_actor] abstract class PersistentActor(implicit monitoring: 
   override def preStart(): Unit = {
     super.preStart()
     for {
-      resolvedFuture: Option[Snapshot] <- recoverSnapshot(persistenceId)
+      snapshot: Snapshot <- recoverSnapshot(persistenceId)
+      _ = eventsReadToRocksDb.increment()
     } yield {
-      for {
-        snapshot: Snapshot <- resolvedFuture
-        _ = eventsReadToRocksDb.increment()
-      } yield receiveRecover(snapshot)
+      receiveRecover(snapshot)
     }
   }
 

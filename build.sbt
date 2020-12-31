@@ -1,9 +1,6 @@
 import Settings._
 
 lazy val commonSettings = Seq(
-  organization in ThisBuild := "LemosTestagrossa",
-  name := "Gaucho",
-  version := "0.0.1",
   scalaVersion := Dependencies.scalaVersion
 )
 
@@ -11,6 +8,7 @@ lazy val publishSettings = Seq(
   licenses ++= Seq(("MIT", url("http://opensource.org/licenses/MIT"))),
   bintrayOrganization := Some("lemostestagrossa"),
   bintrayRepository := "Gaucho",
+  version := "0.0.9834",
   bintrayPackageLabels := Seq("akka")
 )
 
@@ -19,9 +17,10 @@ lazy val publishSettings = Seq(
 ThisBuild / licenses += ("MIT", url("http://opensource.org/licenses/MIT"))
 
 bintrayOrganization := Some("lemostestagrossa")
-bintrayReleaseOnPublish in ThisBuild := false
+publishMavenStyle := true
+bintrayReleaseOnPublish in ThisBuild := true
 
-lazy val root = (project in file("."))
+lazy val gaucho = (project in file("."))
   .settings(
     publishSettings
   )

@@ -25,7 +25,7 @@ class RocksDBSpec extends AnyFlatSpec with Futures {
 
     put(snapshot.event.aggregateRoot, snapshot)
 
-    val decoded: Either[circe.Error, Snapshot] = SnapshotFromJson(load(snapshot.event.aggregateRoot).futureValue)
+    val decoded: Either[circe.Error, Snapshot] = SnapshotFromJson(load(snapshot.event.aggregateRoot).get)
 
     decoded.map { decodedSnapshot =>
       assert(decodedSnapshot == snapshot)

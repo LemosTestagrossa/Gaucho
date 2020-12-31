@@ -110,6 +110,7 @@ object Dependencies {
     private lazy val circeGeneric = "io.circe" %% "circe-generic" % circeVersion
     private lazy val circeParser = "io.circe" %% "circe-parser" % circeVersion
     private lazy val rocksDB = "org.rocksdb" % "rocksdbjni" % "6.13.3"
+    private lazy val kafkaFS2 = "com.github.fd4s" %% "fs2-kafka" % "1.1.0"
 
     override def modules: Seq[ModuleID] =
       logback ::
@@ -119,6 +120,7 @@ object Dependencies {
       circeGeneric ::
       circeParser ::
       rocksDB ::
+      kafkaFS2 ::
       Nil
   }
 
